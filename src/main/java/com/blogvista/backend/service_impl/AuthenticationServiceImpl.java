@@ -26,7 +26,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -76,14 +75,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public LoginResponse login(
             LoginRequest loginRequest
     ) throws RESTException {
-        Authentication authentication;
-        try {
-            authentication = authenticationManager
-                    .authenticate(new UsernamePasswordAuthenticationToken(
-                            loginRequest.getEmail(), loginRequest.getPassword()));
-        } catch (BadCredentialsException e) {
-            throw new RESTException("Please enter correct password");
-        }
+        Authentication authentication = authenticationManager
+                .authenticate(new UsernamePasswordAuthenticationToken(
+                        loginRequest.getEmail(), loginRequest.getPassword()));
 
         if (authentication.isAuthenticated()) {
             Optional<UserInfo> userInfo = userInfoRepository.findByEmail(loginRequest.getEmail());

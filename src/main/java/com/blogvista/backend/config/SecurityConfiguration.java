@@ -4,7 +4,6 @@ import com.blogvista.backend.constant.Endpoint;
 import com.blogvista.backend.dao.UserInfoUserDetailsService;
 import com.blogvista.backend.filter.JwtFilter;
 import com.blogvista.backend.repository.UserInfoRepository;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,6 +24,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.util.List;
 
@@ -32,12 +32,20 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfiguration {
-    private final JwtFilter jwtFilter;
     private final UserInfoRepository userInfoRepository;
+    private final HandlerExceptionResolver handlerExceptionResolver;
 
-    public SecurityConfiguration(JwtFilter jwtFilter, UserInfoRepository userInfoRepository) {
-        this.jwtFilter = jwtFilter;
+    public SecurityConfiguration(
+            UserInfoRepository userInfoRepository,
+            HandlerExceptionResolver handlerExceptionResolver
+    ) {
         this.userInfoRepository = userInfoRepository;
+        this.handlerExceptionResolver = handlerExceptionResolver;
+    }
+
+    @Bean
+    public JwtFilter jwtFilter() {
+        return new JwtFilter(handlerExceptionResolver);
     }
 
     @Bean
@@ -73,29 +81,9 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorizeHttpRequests -> authorizeHttpRequests
                         .requestMatchers(WHITE_LIST).permitAll()
                         .anyRequest().authenticated())
-                .exceptionHandling(exceptionHandling -> {
-                    exceptionHandling
-                            .authenticationEntryPoint((request, response, e) -> {
-                                String message = (String) response.getHeader("message");
-                                String returnMessage = null;
-                                if (message != null) {
-                                    returnMessage = message;
-                                } else {
-                                    returnMessage = "Unauthorised Access";
-                                }
-                                response.setContentType("application/json;charset=UTF-8");
-                                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                                response.getWriter().write(1);
-                            })
-                            .accessDeniedHandler((request, response, e) -> {
-                                response.setContentType("application/json;charset=UTF-8");
-                                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                                response.getWriter().write(1);
-                            });
-                })
                 .sessionManagement(sessionManagement -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
 
         httpSecurity.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable));
 

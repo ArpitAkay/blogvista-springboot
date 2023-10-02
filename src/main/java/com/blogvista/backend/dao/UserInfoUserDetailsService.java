@@ -1,9 +1,9 @@
 package com.blogvista.backend.dao;
 
 import com.blogvista.backend.entity.UserInfo;
-import com.blogvista.backend.exception.RESTException;
 import com.blogvista.backend.repository.UserInfoRepository;
 import lombok.SneakyThrows;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,11 +25,10 @@ public class UserInfoUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         Optional<UserInfo> userInfo = userInfoRepository.findByEmail(email);
 
-        if(userInfo.isPresent()) {
+        if (userInfo.isPresent()) {
             return new UserInfoUserDetails(userInfo.get());
-        }
-        else {
-            throw new RESTException("Please enter correct email");
+        } else {
+            throw new BadCredentialsException("Bad Credentials");
         }
     }
 }
