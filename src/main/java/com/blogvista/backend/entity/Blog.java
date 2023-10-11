@@ -1,9 +1,8 @@
 package com.blogvista.backend.entity;
 
+import com.blogvista.backend.enumeration.BlogStatus;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.UUID;
 
 @Entity
 @Getter
@@ -11,18 +10,24 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class Blog {
+public class Blog extends Audit {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID blogId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int blogId;
     private String title;
-    @Lob
-    private String content;
     private String author;
     private String category;
-    private String tags;
-    private String imageUrl;
-    private String videoUrl;
-    private String audioUrl;
-    private String status;
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String content;
+    private String previewImageUrl;
+    private String previewImageName;
+    private BlogStatus status;
+
+    @ManyToOne
+    @JoinColumn(
+            name = "email",
+            referencedColumnName = "email"
+    )
+    private UserInfo userInfo;
 }

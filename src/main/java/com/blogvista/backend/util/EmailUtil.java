@@ -11,7 +11,7 @@ import java.util.Properties;
 @Component
 public class EmailUtil {
 
-    public String sendVerificationEmail(UserInfo userInfo) throws MessagingException {
+    public String sendVerificationEmail(UserInfo userInfo, String subject, String emailTemplate) throws MessagingException {
         String from = "blogvista24@gmail.com";
         String to = userInfo.getEmail();
 
@@ -31,20 +31,10 @@ public class EmailUtil {
         try {
             Message message = new MimeMessage(session);
             message.setRecipient(Message.RecipientType.TO, new InternetAddress(to));
-            message.setFrom(new InternetAddress("ak2400320@gmail.com"));
-            message.setSubject("Registration Successful");
-            message.setContent("<!DOCTYPE html>\n"
-                    + "<html lang=\"en\">\n"
-                    + "<head>\n"
-                    + "    <meta charset=\"UTF-8\">\n"
-                    + "    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n"
-                    + "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-                    + "    <title>Welcome Mail</title>\n"
-                    + "</head>\n"
-                    + "<body>\n"
-                    + "    <h1>You are successfully registrated to our Blog Application!!!</h1>\n"
-                    + "</body>\n"
-                    + "</html>", "text/html");
+            message.setFrom(new InternetAddress("blogvista24@gmail.com"));
+            message.setSubject(subject);
+
+            message.setContent(emailTemplate, "text/html");
 
             Transport.send(message);
             return "Success";
