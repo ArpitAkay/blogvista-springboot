@@ -96,7 +96,12 @@ public class SecurityConfiguration {
             Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.LOGIN,
             Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.SIGN_UP,
             Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.GOOGLE_SIGN_UP,
-            Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.VERIFY_EMAIL
+            Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.SEND_EMAIL_VERIFICATION_MAIL,
+            Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.SEND_FORGET_PASSWORD_MAIL,
+            Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.VERIFY_EMAIL_TOKEN,
+            Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.VERIFY_FORGET_PASSWORD_TOKEN,
+            Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.FORGET_PASSWORD,
+            Endpoint.AUTHENTICATION_ENDPOINT + Endpoint.GENERATE_ACCESS_TOKEN_VIA_REFRESH_TOKEN
     };
 
     private CorsConfigurationSource corsConfigurationSource() {

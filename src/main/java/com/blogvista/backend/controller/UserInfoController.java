@@ -6,6 +6,7 @@ import com.blogvista.backend.model.user_info.UserInfoResponse;
 import com.blogvista.backend.service.UserInfoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,14 +24,17 @@ public class UserInfoController {
         this.userInfoService = userInfoService;
     }
 
-    @GetMapping(Endpoint.GET_USER_INFO_ENDPOINT)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_USER')")
+    @GetMapping(Endpoint.GET_USER_INFO)
     public ResponseEntity<UserInfoResponse> getUserInfoByEmail(
             @RequestParam("email") String email
     ) throws RESTException {
+
         return new ResponseEntity<>(userInfoService.getUserInfoByEmail(email), HttpStatus.OK);
     }
 
-    @GetMapping(Endpoint.GET_ALL_USER_INFO_ENDPOINT)
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_USER')")
+    @GetMapping(Endpoint.GET_ALL_USER_INFO)
     public ResponseEntity<List<UserInfoResponse>> getAllUserInfo() {
         return new ResponseEntity<>(userInfoService.getAllUserInfo(), HttpStatus.OK);
     }

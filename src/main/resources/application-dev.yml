@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  devtools:
+    add-properties: true
   application:
     name: blogvista-backend
   datasource:
@@ -17,5 +19,27 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
+secret:
+  key: 1df38d9bda278dc5bb3da911a2b1dd4cb093e7eed0cb1c77641f05c70e3c2b42
+
 google:
   clientId: 645561507231-9h880rl8j5aske5c52c49epfjgukp034.apps.googleusercontent.com
+
+cloud:
+  aws:
+    credentials:
+      accessKey: AKIASYRQWHADVEENPT54
+      secretKey: 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
+    region:
+      static: ap-south-1
+    stack:
+      auto: false
+
+application:
+  bucket:
+    name: blogvista
+
+
+url:
+  emailVerify: http://localhost:3000/mail/verifyEmail?token=
+  forgetPassword: http://localhost:3000/mail/forgetPassword?token=

@@ -15,11 +15,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
     public static final String ACCESS_DENIED_REASON = "access_denied_reason";
     public static final String AUTHORIZATION_FAILURE = "Authorization Failure";
+    public static final String AUTHENTICATION_FAILURE = "Authentication Failure";
 
     @ExceptionHandler(Exception.class)
     public ProblemDetail handleException(Exception e) {
-        ProblemDetail problemDetail;
+        e.printStackTrace();
 
+        ProblemDetail problemDetail;
         if (e instanceof MethodArgumentNotValidException methodArgumentNotValidException) {
             problemDetail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
             methodArgumentNotValidException.getBindingResult().getAllErrors().forEach(error -> {
@@ -27,14 +29,13 @@ public class GlobalExceptionHandler {
                 String message = error.getDefaultMessage();
                 problemDetail.setProperty(fieldName, message);
             });
-
             return problemDetail;
         } else if (e instanceof RESTException) {
             problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
         } else if (e instanceof BadCredentialsException) {
             problemDetail =
                     ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, e.getMessage());
-            problemDetail.setProperty(ACCESS_DENIED_REASON, "Authentication Failure");
+            problemDetail.setProperty(ACCESS_DENIED_REASON, AUTHENTICATION_FAILURE);
             return problemDetail;
         } else if (
                 e instanceof AccessDeniedException
@@ -45,7 +46,7 @@ public class GlobalExceptionHandler {
             problemDetail.setProperty(ACCESS_DENIED_REASON, AUTHORIZATION_FAILURE);
             return problemDetail;
         } else {
-            problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
         }
         return problemDetail;
     }

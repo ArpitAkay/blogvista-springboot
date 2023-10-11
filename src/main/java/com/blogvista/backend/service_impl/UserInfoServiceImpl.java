@@ -1,11 +1,13 @@
 package com.blogvista.backend.service_impl;
 
+import com.blogvista.backend.dao.UserInfoUserDetails;
 import com.blogvista.backend.entity.UserInfo;
 import com.blogvista.backend.exception.RESTException;
 import com.blogvista.backend.model.user_info.UserInfoResponse;
 import com.blogvista.backend.repository.UserInfoRepository;
 import com.blogvista.backend.service.UserInfoService;
 import org.modelmapper.ModelMapper;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,7 +29,6 @@ public class UserInfoServiceImpl implements UserInfoService {
     ) throws RESTException {
         Optional<UserInfo> userInfoOptional = userInfoRepository.findByEmail(email);
         if (userInfoOptional.isPresent()) {
-            System.out.println(userInfoOptional.get());
             UserInfo userInfo = userInfoOptional.get();
             return modelMapper.map(userInfo, UserInfoResponse.class);
         }
@@ -38,6 +39,13 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Override
     public List<UserInfoResponse> getAllUserInfo() {
+//        System.out.println(SecurityContextHolder.getContext());
+//        System.out.println(SecurityContextHolder.getContext().getAuthentication());
+//        System.out.println(SecurityContextHolder.getContext().getAuthentication().getPrincipal());
+//        UserInfoUserDetails principal = (UserInfoUserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        System.out.println(principal.getUsername());
+//        System.out.println(principal.getPassword());
+//        System.out.println(principal.getAuthorities());
         List<UserInfo> userInfoList = userInfoRepository.findAll();
         return userInfoList.stream()
                 .map(userInfo -> modelMapper.map(userInfo, UserInfoResponse.class))
