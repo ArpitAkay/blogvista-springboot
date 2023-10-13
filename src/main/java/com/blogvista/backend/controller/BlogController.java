@@ -2,18 +2,15 @@ package com.blogvista.backend.controller;
 
 import com.blogvista.backend.constant.Endpoint;
 import com.blogvista.backend.exception.RESTException;
-import com.blogvista.backend.model.blog.BlogRequest;
 import com.blogvista.backend.model.blog.BlogResponse;
 import com.blogvista.backend.model.blog.PaginatedBlogReponse;
 import com.blogvista.backend.service.BlogService;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping(Endpoint.BLOG_ENDPOINT)
@@ -28,7 +25,7 @@ public class BlogController {
 
     @PostMapping(Endpoint.CREATE_BLOG)
     public ResponseEntity<BlogResponse> createBlog(
-            @Valid @RequestPart(name = "blogData") String blogRequestInString,
+            @RequestPart(name = "blogData") String blogRequestInString,
             @RequestPart(name = "blogPreviewImage", required = false) MultipartFile multipartFile
     ) throws RESTException, IOException {
         return new ResponseEntity<>(blogService.createBlog(blogRequestInString, multipartFile), HttpStatus.OK);
@@ -42,8 +39,11 @@ public class BlogController {
     }
 
     @GetMapping(Endpoint.GET_BLOGS_BY_EMAIL)
-    public ResponseEntity<List<BlogResponse>> getBlogsByEmail() throws RESTException {
-        return new ResponseEntity<>(blogService.getBlogsByEmail(), HttpStatus.OK);
+    public ResponseEntity<PaginatedBlogReponse> getBlogsByEmail(
+            @RequestParam("pageNo") int pageNo,
+            @RequestParam(name = "pageSize", defaultValue = "5", required = false) int pageSize
+    ) throws RESTException {
+        return new ResponseEntity<>(blogService.getBlogsByEmail(pageNo, pageSize), HttpStatus.OK);
     }
 
     @GetMapping(Endpoint.GET_ALL_BLOGS)
@@ -57,9 +57,11 @@ public class BlogController {
     @PutMapping(Endpoint.UPDATE_BLOG_BY_ID)
     public ResponseEntity<BlogResponse> updateBlogById(
             @RequestParam("blogId") int blogId,
-            @Valid @RequestBody BlogRequest blogRequest
+            @RequestPart(name = "blogData") String blogRequestInString,
+            @RequestPart(name = "blogPreviewImage", required = false) MultipartFile multipartFile
     ) throws RESTException {
-        return new ResponseEntity<>(blogService.updateBlogById(blogId, blogRequest), HttpStatus.OK);
+        return new ResponseEntity<>(blogService
+                .updateBlogById(blogId, blogRequestInString, multipartFile), HttpStatus.OK);
     }
 
     @DeleteMapping(Endpoint.DELETE_BLOG_BY_ID)
@@ -67,5 +69,13 @@ public class BlogController {
             @RequestParam("blogId") int blogId
     ) throws RESTException {
         return new ResponseEntity<>(blogService.deleteBlogById(blogId), HttpStatus.OK);
+    }
+
+    @PostMapping(Endpoint.UPDATE_BLOG_STATUS)
+    public ResponseEntity<String> updateBlogStatus(
+            @RequestParam("blogId") int blogId,
+            @RequestParam("blogStatus") String blogStatus
+    ) throws RESTException {
+        return new ResponseEntity<>(blogService.updateBlogStatus(blogId, blogStatus), HttpStatus.OK);
     }
 }

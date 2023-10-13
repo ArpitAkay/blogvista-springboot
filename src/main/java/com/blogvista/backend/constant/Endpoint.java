@@ -29,6 +29,7 @@ public class Endpoint {
     public static final String GET_ALL_BLOGS = "/get/all";
     public static final String UPDATE_BLOG_BY_ID = "/update";
     public static final String DELETE_BLOG_BY_ID = "/delete";
+    public static final String UPDATE_BLOG_STATUS = "/update/status";
 
 
     public static final String CATEGORY_ENDPOINT = "/api/v1/category";

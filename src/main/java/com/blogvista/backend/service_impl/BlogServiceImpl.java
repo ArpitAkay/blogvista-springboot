@@ -19,10 +19,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class BlogServiceImpl implements BlogService {
@@ -83,17 +86,34 @@ public class BlogServiceImpl implements BlogService {
     }
 
     @Override
-    public List<BlogResponse> getBlogsByEmail(
+    public PaginatedBlogReponse getBlogsByEmail(
+            int pageNo,
+            int pageSize
     ) throws RESTException {
+        PaginatedBlogReponse paginatedBlogReponse = new PaginatedBlogReponse();
         UserInfoUserDetails userInfoUserDetails = (UserInfoUserDetails) SecurityContextHolder
                 .getContext().getAuthentication().getPrincipal();
         String email = userInfoUserDetails.getUsername();
 
-        UserInfo userInfoOptional = userInfoRepository.findByEmail(email)
+        UserInfo userInfo = userInfoRepository.findByEmail(email)
                 .orElseThrow(() -> new RESTException("User info not found with email " + email));
 
-        List<Blog> blogs = blogRepository.findByEmail(userInfoOptional.getEmail());
-        return blogs.stream().map(blog -> modelMapper.map(blog, BlogResponse.class)).toList();
+        //find all blogs by email
+        PageRequest pageRequest = PageRequest.of(pageNo, pageSize);
+        Page<Blog> blogs = blogRepository.findByUserInfo(userInfo, pageRequest);
+
+        paginatedBlogReponse.setTotalBlogs(blogs.getTotalElements());
+        paginatedBlogReponse.setTotalPages(blogs.getTotalPages());
+        paginatedBlogReponse.setCurrentPage(blogs.getNumber());
+        paginatedBlogReponse.setPageSize(blogs.getSize());
+        paginatedBlogReponse.setHasNext(blogs.hasNext());
+        paginatedBlogReponse.setHasPrevious(blogs.hasPrevious());
+
+        List<BlogResponse> blogResponseList = blogs
+                .stream().map(blog -> modelMapper.map(blog, BlogResponse.class)).toList();
+        paginatedBlogReponse.setBlogs(blogResponseList);
+
+        return paginatedBlogReponse;
     }
 
     @Override
@@ -119,11 +139,32 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     public BlogResponse updateBlogById(
-            int blogId, BlogRequest blogRequest
+            int blogId,
+            String blogRequestInString,
+            MultipartFile multipartFile
     ) throws RESTException {
         Blog blog = blogRepository.findById(blogId)
                 .orElseThrow(() -> new RESTException(BLOG_NOT_FOUND_WITH_BLOG + blogId));
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> blogData = objectMapper.convertValue(blogRequestInString, Map.class);
+
+        blogData.forEach((key, value) -> {
+            Field field = ReflectionUtils.findField(Blog.class, key);
+            field.setAccessible(true);
+            ReflectionUtils.setField(field, blog, value);
+        });
+
         Blog blogSaved = blogRepository.save(blog);
+
+        if(multipartFile != null) {
+            s3Util.deleteFileInS3Bucket(blog.getPreviewImageName());
+            String fileNameWithUUID = s3Util.uploadFileToS3Bucket(multipartFile);
+            String imageUrlFromS3 = s3Util.getImageUrlFromS3(fileNameWithUUID);
+            blogSaved.setPreviewImageUrl(imageUrlFromS3);
+            blogSaved.setPreviewImageName(fileNameWithUUID);
+            blogRepository.save(blogSaved);
+        }
         return modelMapper.map(blogSaved, BlogResponse.class);
     }
 
@@ -136,5 +177,21 @@ public class BlogServiceImpl implements BlogService {
         s3Util.deleteFileInS3Bucket(blog.getPreviewImageName());
         blogRepository.delete(blog);
         return "Blog deleted successfully";
+    }
+
+    @Override
+    public String updateBlogStatus(
+            int blogId,
+            String blogStatus
+    ) throws RESTException {
+        Blog blog = blogRepository.findById(blogId)
+                .orElseThrow(() -> new RESTException(BLOG_NOT_FOUND_WITH_BLOG + blogId));
+        if (blogStatus.equalsIgnoreCase("PUBLISH")) {
+            blog.setStatus(BlogStatus.PUBLISHED);
+        } else {
+            blog.setStatus(BlogStatus.CREATED);
+        }
+        blogRepository.save(blog);
+        return "Blog status updated successfully";
     }
 }

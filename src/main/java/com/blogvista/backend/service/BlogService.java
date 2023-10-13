@@ -1,13 +1,11 @@
 package com.blogvista.backend.service;
 
 import com.blogvista.backend.exception.RESTException;
-import com.blogvista.backend.model.blog.BlogRequest;
 import com.blogvista.backend.model.blog.BlogResponse;
 import com.blogvista.backend.model.blog.PaginatedBlogReponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 public interface BlogService {
     BlogResponse createBlog(
@@ -19,7 +17,9 @@ public interface BlogService {
             int blogId
     ) throws RESTException;
 
-    List<BlogResponse> getBlogsByEmail(
+    PaginatedBlogReponse getBlogsByEmail(
+            int pageNo,
+            int pageSize
     ) throws RESTException;
 
     PaginatedBlogReponse getAllBlogs(
@@ -29,10 +29,16 @@ public interface BlogService {
 
     BlogResponse updateBlogById(
             int blogId,
-            BlogRequest blogRequest
+            String blogRequestInString,
+            MultipartFile multipartFile
     ) throws RESTException;
 
     String deleteBlogById(
             int blogId
+    ) throws RESTException;
+
+    String updateBlogStatus(
+            int blogId,
+            String blogStatus
     ) throws RESTException;
 }
