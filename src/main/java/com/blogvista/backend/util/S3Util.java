@@ -2,8 +2,6 @@ package com.blogvista.backend.util;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.blogvista.backend.exception.RESTException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,7 +13,6 @@ import java.util.UUID;
 
 @Component
 public class S3Util {
-    private static final Logger logger = LoggerFactory.getLogger(S3Util.class);
     private final AmazonS3 amazonS3;
     @Value("${application.bucket.name}")
     private String bucketName;
@@ -23,7 +20,6 @@ public class S3Util {
     public S3Util(
             AmazonS3 amazonS3
     ) {
-        logger.info("S3Util constructor called");
         this.amazonS3 = amazonS3;
     }
 
