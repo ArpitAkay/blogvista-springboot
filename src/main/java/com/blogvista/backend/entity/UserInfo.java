@@ -15,15 +15,18 @@ import java.util.List;
 @ToString
 public class UserInfo extends Audit {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String userId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int userId;
     private String firstName;
     private String lastName;
+    @Column(unique = true)
     private String email;
     private String password;
     private String phoneNumber;
     private boolean isVerified;
     private SignupType type;
+    private String profileImageUrl;
+    private String profileImageName;
 
     @ManyToMany(
             fetch = FetchType.EAGER,

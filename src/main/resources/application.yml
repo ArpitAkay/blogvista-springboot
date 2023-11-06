@@ -1,6 +1,3 @@
 spring:
   profiles:
     active: dev
-
-secret:
-  key: 1df38d9bda278dc5bb3da911a2b1dd4cb093e7eed0cb1c77641f05c70e3c2b42

@@ -2,8 +2,10 @@ package com.blogvista.backend.service_impl;
 
 import com.blogvista.backend.entity.Role;
 import com.blogvista.backend.entity.UserInfo;
+import com.blogvista.backend.entity.Token;
 import com.blogvista.backend.enumeration.SignupType;
 import com.blogvista.backend.exception.RESTException;
+import com.blogvista.backend.model.forget_password.ForgetPasswordRequest;
 import com.blogvista.backend.model.login.LoginRequest;
 import com.blogvista.backend.model.login.LoginResponse;
 import com.blogvista.backend.model.user_info.UserInfoRequest;
@@ -11,9 +13,12 @@ import com.blogvista.backend.model.user_info.UserInfoResponse;
 import com.blogvista.backend.model.verify_email.VerifyEmailRequest;
 import com.blogvista.backend.repository.RoleRepository;
 import com.blogvista.backend.repository.UserInfoRepository;
+import com.blogvista.backend.repository.TokenRepository;
 import com.blogvista.backend.service.AuthenticationService;
+import com.blogvista.backend.service.TokenService;
 import com.blogvista.backend.util.EmailUtil;
 import com.blogvista.backend.util.JwtUtil;
+import com.blogvista.backend.util.TokenUtil;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload;
@@ -26,14 +31,16 @@ import org.modelmapper.ModelMapper;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -49,6 +56,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final EmailUtil emailUtil;
     private final Environment environment;
+    private final TemplateEngine templateEngine;
+    private final TokenRepository tokenRepository;
+    private final TokenService tokenService;
+    private final TokenUtil tokenUtil;
 
     public AuthenticationServiceImpl(
             PasswordEncoder passwordEncoder,
@@ -59,7 +70,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             JwtUtil jwtUtil,
             ApplicationEventPublisher applicationEventPublisher,
             EmailUtil emailUtil,
-            Environment environment
+            Environment environment,
+            TemplateEngine templateEngine,
+            TokenRepository tokenRepository,
+            TokenService tokenService,
+            TokenUtil tokenUtil
     ) {
         this.passwordEncoder = passwordEncoder;
         this.modelMapper = modelMapper;
@@ -70,20 +85,19 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         this.applicationEventPublisher = applicationEventPublisher;
         this.emailUtil = emailUtil;
         this.environment = environment;
+        this.templateEngine = templateEngine;
+        this.tokenRepository = tokenRepository;
+        this.tokenService = tokenService;
+        this.tokenUtil = tokenUtil;
     }
 
     @Override
     public LoginResponse login(
             LoginRequest loginRequest
     ) throws RESTException {
-        Authentication authentication;
-        try {
-            authentication = authenticationManager
-                    .authenticate(new UsernamePasswordAuthenticationToken(
-                            loginRequest.getEmail(), loginRequest.getPassword()));
-        } catch (BadCredentialsException e) {
-            throw new RESTException("Please enter correct password");
-        }
+        Authentication authentication = authenticationManager
+                .authenticate(new UsernamePasswordAuthenticationToken(
+                        loginRequest.getEmail(), loginRequest.getPassword()));
 
         if (authentication.isAuthenticated()) {
             Optional<UserInfo> userInfo = userInfoRepository.findByEmail(loginRequest.getEmail());
@@ -94,6 +108,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 loginResponse.setName(userInfoSaved.getFirstName() + " " + userInfoSaved.getLastName());
                 loginResponse.setEmail(userInfoSaved.getEmail());
                 loginResponse.setAccessToken(jwtUtil.generateToken(userInfoSaved));
+                loginResponse.setRoles(userInfoSaved.getRoles());
+                Token token = tokenService.generateVerificationToken(userInfoSaved, LocalDateTime.now().plusDays(30));
+                loginResponse.setRefreshToken(token.getVerificationToken());
                 return loginResponse;
             } else {
                 throw new RESTException("Please verify your account");
@@ -111,7 +128,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         if (userInfoInDb.isEmpty()) {
             UserInfo userInfo = modelMapper.map(userInfoRequest, UserInfo.class);
-            userInfo.setVerified(true);
+            userInfo.setVerified(false);
             userInfo.setPassword(passwordEncoder.encode(userInfo.getPassword()));
             Optional<Role> role = roleRepository.findById(102);
             if (role.isPresent()) {
@@ -177,6 +194,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 loginResponse.setName(userInfoSaved.getFirstName() + " " + userInfoSaved.getLastName());
                 loginResponse.setEmail(userInfoSaved.getEmail());
                 loginResponse.setAccessToken(jwtUtil.generateToken(userInfoSaved));
+                loginResponse.setRoles(userInfoSaved.getRoles());
+                Token token = tokenService.generateVerificationToken(userInfoSaved, LocalDateTime.now().plusDays(30));
+                loginResponse.setRefreshToken(token.getVerificationToken());
                 return loginResponse;
 
             } else {
@@ -188,16 +208,126 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public String verifyEmail(
+    public String sendEmailVerificationMail(
             VerifyEmailRequest verifyEmailRequest
     ) throws RESTException, MessagingException {
-        Optional<UserInfo> userInfo = userInfoRepository.findByEmail(verifyEmailRequest.getEmail());
+        UserInfo userInfo = userInfoRepository.findByEmail(verifyEmailRequest.getEmail())
+                .orElseThrow(() -> new RESTException(
+                        "Account with email " + verifyEmailRequest.getEmail() + " does not  exists"
+                ));
 
-        if (userInfo.isPresent()) {
-            emailUtil.sendVerificationEmail(userInfo.get());
-            return "Verification email sent to " + verifyEmailRequest.getEmail();
-        } else {
-            throw new RESTException("Account with email " + verifyEmailRequest.getEmail() + " does not  exists");
+        if (userInfo.isVerified()) {
+            throw new RESTException("Your account is already verified");
         }
+
+        Token token = tokenService.generateVerificationToken(userInfo, LocalDateTime.now().plusMinutes(30));
+        Context context = new Context();
+        context.setVariable("name", userInfo.getFirstName() + " " + userInfo.getLastName());
+        context.setVariable("verificationLink",
+                environment.getProperty("url.emailVerify") + token.getVerificationToken()
+                        + "&authToken=" + jwtUtil.generateTokenFor30Minutes(userInfo));
+        String emailTemplate = templateEngine.process("EmailVerification", context);
+        String response = emailUtil.sendVerificationEmail(userInfo, "Account Verification", emailTemplate);
+        if (response.equals("Failed")) {
+            throw new RESTException("Failed to send email");
+        }
+        return "Verification email sent to " + verifyEmailRequest.getEmail();
+    }
+
+    @Override
+    public String sendForgetPasswordMail(
+            VerifyEmailRequest verifyEmailRequest
+    ) throws MessagingException, RESTException {
+        UserInfo userInfo = userInfoRepository.findByEmail(verifyEmailRequest.getEmail())
+                .orElseThrow(() -> new RESTException(
+                        "Account with email " + verifyEmailRequest.getEmail() + " does not  exists"
+                ));
+
+        Token token = tokenService.generateVerificationToken(userInfo, LocalDateTime.now().plusMinutes(30));
+        Context context = new Context();
+        context.setVariable("name", userInfo.getFirstName() + " " + userInfo.getLastName());
+        context.setVariable("verificationLink",
+                environment.getProperty("url.forgetPassword") + token.getVerificationToken()
+                        + "&authToken=" + jwtUtil.generateTokenFor30Minutes(userInfo));
+        String emailTemplate = templateEngine.process("ForgetPassword", context);
+        String response = emailUtil.sendVerificationEmail(userInfo, "Password Reset", emailTemplate);
+        if (response.equals("Failed")) {
+            throw new RESTException("Failed to send email");
+        }
+        return "Verification email sent to " + verifyEmailRequest.getEmail();
+    }
+
+    @Override
+    public String verifyEmailToken(
+            String token
+    ) throws RESTException {
+        Token tokenInDB = tokenRepository.findByVerificationToken(token)
+                .orElseThrow(() -> new RESTException("Your link is invalid, please try again"));
+
+        if (tokenInDB.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RESTException("Your link is expired, please try again");
+        }
+
+        UserInfo userInfo = tokenInDB.getUserInfo();
+        if (tokenInDB.getUserInfo() == null) {
+            throw new RESTException("Your link is invalid, please try again");
+        }
+
+        if (tokenInDB.getConfirmedAt() != null || userInfo.isVerified()) {
+            throw new RESTException("Your account is already verified");
+        }
+
+        tokenInDB.setConfirmedAt(LocalDateTime.now());
+        tokenRepository.save(tokenInDB);
+        userInfo.setVerified(true);
+        userInfoRepository.save(userInfo);
+        return "Hurray!! Your email is verified";
+    }
+
+    @Override
+    public String verifyForgetPasswordToken(
+            String token
+    ) throws RESTException {
+        Token tokenInDB = tokenRepository.findByVerificationToken(token)
+                .orElseThrow(() -> new RESTException("Your link is invalid, please try again"));
+
+        return tokenUtil.validateToken(tokenInDB);
+    }
+
+    @Override
+    public String forgetPassword(
+            ForgetPasswordRequest forgetPasswordRequest
+    ) throws RESTException {
+        Token token = tokenRepository.findByVerificationToken(forgetPasswordRequest.getVerificationToken())
+                .orElseThrow(() -> new RESTException("Your link is invalid, please try again"));
+        UserInfo userInfo = token.getUserInfo();
+        if (userInfo != null) {
+            if(passwordEncoder.matches(forgetPasswordRequest.getNewPassword(), userInfo.getPassword())) {
+                throw new RESTException("Your new password cannot be same as old password");
+            }
+            userInfo.setPassword(passwordEncoder.encode(forgetPasswordRequest.getNewPassword()));
+            userInfoRepository.save(userInfo);
+            return "Password changed successfully";
+        } else {
+            throw new RESTException("Your link was invalid, please try again");
+        }
+    }
+
+    @Override
+    public LoginResponse generateAccessTokenViaRefreshToken(
+            String refreshToken
+    ) throws RESTException {
+        Token tokenInDB = tokenRepository.findByVerificationToken(refreshToken)
+                .orElseThrow(() -> new RESTException("Your link is invalid, please try again"));
+
+        tokenUtil.validateToken(tokenInDB);
+        UserInfo userInfo = tokenInDB.getUserInfo();
+        LoginResponse loginResponse = new LoginResponse();
+        loginResponse.setName(userInfo.getFirstName() + " " + userInfo.getLastName());
+        loginResponse.setEmail(userInfo.getEmail());
+        loginResponse.setAccessToken(jwtUtil.generateToken(userInfo));
+        loginResponse.setRefreshToken(refreshToken);
+        loginResponse.setRoles(userInfo.getRoles());
+        return loginResponse;
     }
 }

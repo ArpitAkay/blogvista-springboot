@@ -46,12 +46,19 @@ public class JwtUtil {
         Map<String, Object> claims = new HashMap<>();
         claims.put("authorities", userInfo.getRoles());
 
-        return createToken(claims, userInfo.getEmail());
+        return createToken(claims, userInfo.getEmail(), (1000 * 60 * 60 * 9));
     }
 
-    private String createToken(Map<String, Object> claims, String email) {
+    public String generateTokenFor30Minutes(UserInfo userInfo){
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("authorities", userInfo.getRoles());
+
+        return createToken(claims, userInfo.getEmail(), (1000 * 60 * 30));
+    }
+
+    private String createToken(Map<String, Object> claims, String email, int time) {
         return Jwts.builder().setClaims(claims).setSubject(email).setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 9))
+                .setExpiration(new Date(System.currentTimeMillis() + time))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256).compact();
     }
 
