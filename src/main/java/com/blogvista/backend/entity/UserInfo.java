@@ -25,6 +25,8 @@ public class UserInfo extends Audit {
     private String phoneNumber;
     private boolean isVerified;
     private SignupType type;
+    private String profileImageUrl;
+    private String profileImageName;
 
     @ManyToMany(
             fetch = FetchType.EAGER,
