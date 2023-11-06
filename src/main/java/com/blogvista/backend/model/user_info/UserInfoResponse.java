@@ -16,5 +16,6 @@ public class UserInfoResponse {
     private String lastName;
     private String email;
     private String phoneNumber;
+    private String profileImageUrl;
     private List<Role> roles = new ArrayList<>();
 }

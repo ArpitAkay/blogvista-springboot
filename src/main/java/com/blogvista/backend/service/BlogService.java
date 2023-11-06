@@ -3,9 +3,11 @@ package com.blogvista.backend.service;
 import com.blogvista.backend.exception.RESTException;
 import com.blogvista.backend.model.blog.BlogResponse;
 import com.blogvista.backend.model.blog.PaginatedBlogReponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 public interface BlogService {
     BlogResponse createBlog(
@@ -31,7 +33,7 @@ public interface BlogService {
             int blogId,
             String blogRequestInString,
             MultipartFile multipartFile
-    ) throws RESTException;
+    ) throws RESTException, JsonProcessingException;
 
     String deleteBlogById(
             int blogId
@@ -41,4 +43,10 @@ public interface BlogService {
             int blogId,
             String blogStatus
     ) throws RESTException;
+
+    PaginatedBlogReponse searchBlogs(
+            int pageNo,
+            int pageSize,
+            String query
+    );
 }

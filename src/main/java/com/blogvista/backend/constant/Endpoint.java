@@ -15,11 +15,12 @@ public class Endpoint {
     public static final String VERIFY_FORGET_PASSWORD_TOKEN = "/verify/forgetPassword/token";
     public static final String FORGET_PASSWORD = "/forgetPassword";
     public static final String GENERATE_ACCESS_TOKEN_VIA_REFRESH_TOKEN = "/generate/accessToken";
-
+    public static final String SEARCH_BLOGS = "/search/blogs";
 
     public static final String USER_INFO_ENDPOINT = "/api/v1/user";
     public static final String GET_USER_INFO = "/get";
     public static final String GET_ALL_USER_INFO = "/get/all";
+    public static final String UPDATE_USER_INFO = "/update";
 
 
     public static final String BLOG_ENDPOINT = "/api/v1/blog";

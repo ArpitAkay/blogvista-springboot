@@ -4,6 +4,7 @@ import com.blogvista.backend.entity.UserInfo;
 import com.blogvista.backend.entity.Token;
 import com.blogvista.backend.service.TokenService;
 import com.blogvista.backend.util.EmailUtil;
+import com.blogvista.backend.util.JwtUtil;
 import jakarta.mail.MessagingException;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
@@ -18,17 +19,19 @@ public class SpringEventListener {
     private final EmailUtil emailUtil;
     private final TemplateEngine templateEngine;
     private final TokenService tokenService;
+    private final JwtUtil jwtUtil;
     private final Environment environment;
 
     public SpringEventListener(
             EmailUtil emailUtil,
             TemplateEngine templateEngine,
             TokenService tokenService,
-            Environment environment
+            JwtUtil jwtUtil, Environment environment
     ) {
         this.emailUtil = emailUtil;
         this.templateEngine = templateEngine;
         this.tokenService = tokenService;
+        this.jwtUtil = jwtUtil;
         this.environment = environment;
     }
 
@@ -37,10 +40,11 @@ public class SpringEventListener {
             UserInfo userInfo
     ) throws MessagingException {
         Token token = tokenService.generateVerificationToken(userInfo, LocalDateTime.now().plusMinutes(30));
-        System.out.println(token);
         Context context = new Context();
         context.setVariable("name", userInfo.getFirstName() + " " + userInfo.getLastName());
-        context.setVariable("verificationLink", environment.getProperty("url.emailVerify") + token.getVerificationToken());
+        context.setVariable("verificationLink",
+                environment.getProperty("url.emailVerify") + token.getVerificationToken()
+                        + "&authToken=" + jwtUtil.generateTokenFor30Minutes(userInfo));
         String emailTemplate = templateEngine.process("EmailVerification", context);
 
         String status = emailUtil.sendVerificationEmail(userInfo, "Account Verification", emailTemplate);

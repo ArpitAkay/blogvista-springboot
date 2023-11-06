@@ -194,6 +194,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 loginResponse.setName(userInfoSaved.getFirstName() + " " + userInfoSaved.getLastName());
                 loginResponse.setEmail(userInfoSaved.getEmail());
                 loginResponse.setAccessToken(jwtUtil.generateToken(userInfoSaved));
+                loginResponse.setRoles(userInfoSaved.getRoles());
+                Token token = tokenService.generateVerificationToken(userInfoSaved, LocalDateTime.now().plusDays(30));
+                loginResponse.setRefreshToken(token.getVerificationToken());
                 return loginResponse;
 
             } else {
@@ -221,7 +224,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Context context = new Context();
         context.setVariable("name", userInfo.getFirstName() + " " + userInfo.getLastName());
         context.setVariable("verificationLink",
-                environment.getProperty("url.emailVerify") + token.getVerificationToken());
+                environment.getProperty("url.emailVerify") + token.getVerificationToken()
+                        + "&authToken=" + jwtUtil.generateTokenFor30Minutes(userInfo));
         String emailTemplate = templateEngine.process("EmailVerification", context);
         String response = emailUtil.sendVerificationEmail(userInfo, "Account Verification", emailTemplate);
         if (response.equals("Failed")) {
@@ -243,7 +247,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Context context = new Context();
         context.setVariable("name", userInfo.getFirstName() + " " + userInfo.getLastName());
         context.setVariable("verificationLink",
-                environment.getProperty("url.forgetPassword") + token.getVerificationToken());
+                environment.getProperty("url.forgetPassword") + token.getVerificationToken()
+                        + "&authToken=" + jwtUtil.generateTokenFor30Minutes(userInfo));
         String emailTemplate = templateEngine.process("ForgetPassword", context);
         String response = emailUtil.sendVerificationEmail(userInfo, "Password Reset", emailTemplate);
         if (response.equals("Failed")) {
@@ -297,11 +302,10 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .orElseThrow(() -> new RESTException("Your link is invalid, please try again"));
         UserInfo userInfo = token.getUserInfo();
         if (userInfo != null) {
-            String encodedPassword = passwordEncoder.encode(forgetPasswordRequest.getNewPassword());
-            if(userInfo.getPassword().equals(encodedPassword)) {
+            if(passwordEncoder.matches(forgetPasswordRequest.getNewPassword(), userInfo.getPassword())) {
                 throw new RESTException("Your new password cannot be same as old password");
             }
-            userInfo.setPassword(encodedPassword);
+            userInfo.setPassword(passwordEncoder.encode(forgetPasswordRequest.getNewPassword()));
             userInfoRepository.save(userInfo);
             return "Password changed successfully";
         } else {
