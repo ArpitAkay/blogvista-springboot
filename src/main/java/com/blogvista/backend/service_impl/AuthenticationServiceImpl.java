@@ -305,6 +305,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             if(passwordEncoder.matches(forgetPasswordRequest.getNewPassword(), userInfo.getPassword())) {
                 throw new RESTException("Your new password cannot be same as old password");
             }
+            token.setConfirmedAt(LocalDateTime.now());
+            tokenRepository.save(token);
             userInfo.setPassword(passwordEncoder.encode(forgetPasswordRequest.getNewPassword()));
             userInfoRepository.save(userInfo);
             return "Password changed successfully";
@@ -321,6 +323,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .orElseThrow(() -> new RESTException("Your link is invalid, please try again"));
 
         tokenUtil.validateToken(tokenInDB);
+        tokenInDB.setConfirmedAt(LocalDateTime.now());
+        tokenRepository.save(tokenInDB);
         UserInfo userInfo = tokenInDB.getUserInfo();
         LoginResponse loginResponse = new LoginResponse();
         loginResponse.setName(userInfo.getFirstName() + " " + userInfo.getLastName());
